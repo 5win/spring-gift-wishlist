@@ -1,7 +1,9 @@
-package gift;
+package gift.repository;
 
+import gift.DTO.Product;
 import java.sql.Types;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -25,7 +27,7 @@ public class ProductDao {
     /**
      * 새 상품을 DB에 저장
      *
-     * @return 반영된 row의 개수
+     * @return 반영된 row의 개수 (Integer)
      */
     public Integer insertNewProduct(Product newProduct) {
         String sql = """
@@ -43,7 +45,7 @@ public class ProductDao {
     /**
      * 상품 전체를 반환
      *
-     * @return 상품 객체가 담긴 List
+     * @return 상품 객체가 담긴 List<Product>
      */
     public List<Product> selectProducts() {
         String sql = "SELECT * FROM product;";
@@ -53,22 +55,22 @@ public class ProductDao {
     }
 
     /**
-     * 전달받은 id에 해당하는 상품 리스트 반환
+     * 전달받은 id에 해당하는 상품 객체 반환
      *
-     * @return 상품 객체가 담긴 List
+     * @return 상품이 담긴 Optional<Product> 객체
      */
-    public List<Product> selectOneProduct(Long id) {
+    public Optional<Product> selectOneProduct(Long id) {
         String sql = "SELECT * FROM product WHERE id = :id;";
         return jdbcClient.sql(sql)
             .param("id", id)
             .query(productRowMapper)
-            .list();
+            .optional();
     }
 
     /**
      * 전달 받은 상품으로 기존 상품을 수정
      *
-     * @return 반영된 row의 개수
+     * @return 반영된 row의 개수 (Integer)
      */
     public Integer updateProduct(Product editedProduct) {
         String sql = """
@@ -87,7 +89,7 @@ public class ProductDao {
     /**
      * id에 해당하는 상품 삭제
      *
-     * @return 반영된 row의 개수
+     * @return 반영된 row의 개수 (Integer)
      */
     public Integer deleteProduct(Long id) {
         String sql = "DELETE FROM product WHERE id = :id";

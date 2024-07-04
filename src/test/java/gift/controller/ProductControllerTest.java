@@ -1,11 +1,13 @@
-package gift;
+package gift.controller;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import gift.constants.ErrorMessage;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -25,20 +27,6 @@ class ProductControllerTest {
     private @Autowired MockMvc mockMvc;
 
     @Test
-    @DisplayName("상품 목록 가져오기 테스트")
-    void getProducts() throws Exception {
-        mockMvc.perform(get("/api/products"))
-            .andExpect(status().isOk());
-    }
-
-    @Test
-    @DisplayName("상품 추가 폼 페이지 가져오기 테스트")
-    void addProductForm() throws Exception {
-        mockMvc.perform(get("/api/products/product"))
-            .andExpect(status().isOk());
-    }
-
-    @Test
     @DisplayName("상품 추가 테스트")
     void addProduct() throws Exception {
         String requestJson = """
@@ -48,21 +36,6 @@ class ProductControllerTest {
         mockMvc.perform(post("/api/products/product")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestJson))
-            .andExpect(status().isOk());
-    }
-
-    @Test
-    @DisplayName("상품 수정 폼 페이지 테스트")
-    void editProductForm() throws Exception {
-        String requestJson = """
-            {"id": 10,"name": "커피", "price": 5500,"imageUrl": "https://..."}
-            """;
-
-        mockMvc.perform(post("/api/products/product")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(requestJson));
-
-        mockMvc.perform(get("/api/products/product/10"))
             .andExpect(status().isOk());
     }
 
@@ -127,8 +100,60 @@ class ProductControllerTest {
         mockMvc.perform(post("/api/products/product")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestJson))
-            .andExpect(status().isNotFound());
+            .andExpect(status().isBadRequest());
 
+    }
+
+    @Test
+    @DisplayName("비어있는 상품명 입력 시 에러 메시지 테스트")
+    void productNameNotBlankErrorMsg() throws Exception {
+        String requestJson = """
+            {"id": 10,"name": null, "price": 5500,"imageUrl": "https://..."}
+            """;
+
+        mockMvc.perform(post("/api/products/product")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestJson))
+            .andExpect(content().string(ErrorMessage.PRODUCT_NAME_VALID_NOT_BLANK_MSG));
+    }
+
+    @Test
+    @DisplayName("15자를 초과하는 상품명 입력 시 에러 메시지 테스트")
+    void productNameSizeErrorMsg() throws Exception {
+        String requestJson = """
+            {"id": 10,"name": "0123456789012345", "price": 5500,"imageUrl": "https://..."}
+            """;
+
+        mockMvc.perform(post("/api/products/product")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestJson))
+            .andExpect(content().string(ErrorMessage.PRODUCT_NAME_VALID_SIZE_MSG));
+    }
+
+    @Test
+    @DisplayName("상품명에 허용되지 않는 특수문자 입력 시 에러 메시지 테스트")
+    void productNameNotAllowCharErrorMsg() throws Exception {
+        String requestJson = """
+            {"id": 10,"name": "{커피}", "price": 5500,"imageUrl": "https://..."}
+            """;
+
+        mockMvc.perform(post("/api/products/product")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestJson))
+            .andExpect(content().string(ErrorMessage.PRODUCT_NAME_VALID_CHAR_MSG));
+    }
+
+    @Test
+    @DisplayName("상품명에 카카오 문구 입력 시 에러 메시지 테스트")
+    void productNameIncludeKakaoErrorMsg() throws Exception {
+        String requestJson = """
+            {"id": 10,"name": "카카오 커피", "price": 5500,"imageUrl": "https://..."}
+            """;
+
+        mockMvc.perform(post("/api/products/product")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestJson))
+            .andExpect(content().string(ErrorMessage.PRODUCT_NAME_VALID_KAKAO_MSG));
     }
 
     @Test
@@ -148,7 +173,22 @@ class ProductControllerTest {
         mockMvc.perform(post("/api/products/product")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestJson2))
-            .andExpect(status().isNotFound());
+            .andExpect(status().isBadRequest())
+            .andExpect(content().string(ErrorMessage.ID_ALREADY_EXISTS_MSG));
+    }
+
+    @Test
+    @DisplayName("해당하는 ID가 없는 상품의 수정 페이지를 요청하는 실패 테스트")
+    void editFormNotExistProduct() throws Exception {
+        String requestJson = """
+            {"id": 10,"name": "커피", "price": 5500,"imageUrl": "https://..."}
+            """;
+
+        mockMvc.perform(get("/api/products/product/10")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestJson))
+            .andExpect(status().isBadRequest())
+            .andExpect(content().string(ErrorMessage.PRODUCT_NOT_EXISTS_MSG));
     }
 
     @Test
@@ -161,7 +201,8 @@ class ProductControllerTest {
         mockMvc.perform(put("/api/products/product")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestJson))
-            .andExpect(status().isNotFound());
+            .andExpect(status().isBadRequest())
+            .andExpect(content().string(ErrorMessage.PRODUCT_NOT_EXISTS_MSG));
     }
 
     @Test
@@ -172,6 +213,7 @@ class ProductControllerTest {
             """;
 
         mockMvc.perform(delete("/api/products/product/10"))
-            .andExpect(status().isNotFound());
+            .andExpect(status().isBadRequest())
+            .andExpect(content().string(ErrorMessage.PRODUCT_NOT_EXISTS_MSG));
     }
 }
